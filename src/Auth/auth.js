@@ -14,7 +14,7 @@ import {
   Grid,
   GridItem,
 } from '@chakra-ui/react';
-import Typical from 'react-typical';
+import ReactTypingEffect from 'react-typing-effect';
 import { keyframes } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -146,14 +146,16 @@ const AuthForm = ({ onLogin }) => {
               SafeSpace
             </Heading>
             <Text fontSize="lg" color="white" textAlign="center">
-              <Typical
-                steps={[
-                  'Your AI Mental Therapist.', 3000,
-                  'Here to Listen and Support.', 3000,
-                  'Helping You Find Peace of Mind.', 3000,
+              <ReactTypingEffect
+                text={[
+                  'Your AI Mental Therapist.',
+                  'Here to Listen and Support.',
+                  'Helping You Find Peace of Mind.'
                 ]}
-                loop={Infinity}
-                wrapper="p"
+                speed={80}
+                eraseSpeed={60}
+                typingDelay={1000}
+                eraseDelay={2000}
               />
             </Text>
           </VStack>
@@ -263,7 +265,7 @@ const AuthForm = ({ onLogin }) => {
                     {isSignUp ? 'Sign Up' : 'Sign In'}
                   </Button>
                   <Text color={textColor} fontSize="sm">
-                    {isSignUp ? 'Already have an account?' : 'Don’t have an account?'}{' '}
+                    {isSignUp ? 'Already have an account?' : 'Dont have an account?'}
                     <Button
                       onClick={() => setIsSignUp(!isSignUp)}
                       variant="link"
