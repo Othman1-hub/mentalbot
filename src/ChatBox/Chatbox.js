@@ -10,12 +10,14 @@ import {
   Spinner,
   useToast,
 } from '@chakra-ui/react';
+import { RepeatIcon } from '@chakra-ui/icons';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import { FaPaperPlane } from 'react-icons/fa';
 import ReactTypingEffect from 'react-typing-effect';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import './ChatBox.css';
 
 const theme = extendTheme({
   styles: {
@@ -38,12 +40,11 @@ const theme = extendTheme({
 });
 
 const ChatBox = () => {
-  const [messages, setMessages] = useState([
-    { sender: 'bot', text: 'Hello! I am your personal mental health assistant. How can I help you today?' }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(uuidv4());
+  const [isAnimating, setIsAnimating] = useState(false);
   const messagesEndRef = useRef(null);
   const toast = useToast();
 
@@ -64,11 +65,35 @@ const ChatBox = () => {
   };
 
   useEffect(() => {
+    loadChatHistory();
+  }, []);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const loadChatHistory = async () => {
+    try {
+      const history = await getHistory();
+      const formattedHistory = history.flatMap(msg => [
+        { sender: 'user', text: msg.user_text, isNew: false },
+        { sender: 'bot', text: msg.bot_text, isNew: false }
+      ]);
+      setMessages(formattedHistory);
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat history. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
 
   const saveMessageToSupabase = async (userMessage, botMessage) => {
@@ -108,24 +133,95 @@ const ChatBox = () => {
     }
   };
 
+  const handleClickSpin = async () => {
+    setIsAnimating(true);
+    
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        throw new Error('Authentication error: ' + authError.message);
+      }
+  
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+  
+      const { data, error } = await supabase
+        .from('chat_history')
+        .delete()
+        .eq('User', user.id); 
+  
+      if (error) {
+        throw new Error('Error deleting rows: ' + error.message);
+      }
+  
+      console.log('Rows deleted:', data);
+      setMessages([]);
+      toast({
+        title: "Chat history cleared",
+        description: "Your chat history has been successfully deleted.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error in deleteSupabaseRows:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear chat history. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setTimeout(() => {
+        setIsAnimating(false);
+      }, 1000);
+    }
+  };
+
+  async function getHistory() {
+    const { data: { user }, erroruser } = await supabase.auth.getUser()
+    console.log(user)
+    const { data, error } = await supabase
+        .from('chat_history')
+        .select('User,bot_text,user_text')
+        .eq('User',user.id)
+
+    if (error) {
+      throw new Error('Error fetching chat history: ' + error.message);
+    }
+
+    return data;
+  }
+
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { sender: 'user', text: input };
+    const userMessage = { sender: 'user', text: input, isNew: true };
     setInput('');
     setLoading(true);
 
     setMessages((prev) => [...prev, userMessage]);
 
     try {
+      const msgHistory = await getHistory();
       const chatSession = model.startChat({
         generationConfig,
-        history: [],
+        history: msgHistory.flatMap(msg => [
+          {
+            role: "user",
+            parts: [{ text: msg.user_text }]
+          },
+          {
+            role: "model",
+            parts: [{ text: msg.bot_text }]
+          }
+        ]),
       });
-
       const result = await chatSession.sendMessage(input);
       const botMessageText = result.response.text() || 'I am here to help you!';
-      const botMessage = { sender: 'bot', text: botMessageText };
+      const botMessage = { sender: 'bot', text: botMessageText, isNew: true };
 
       await saveMessageToSupabase(userMessage.text, botMessage.text);
 
@@ -135,7 +231,7 @@ const ChatBox = () => {
       }, 1000);
     } catch (error) {
       console.error('Error with Google Generative AI API:', error);
-      const errorMessage = { sender: 'bot', text: 'Sorry, something went wrong. Please try again.' };
+      const errorMessage = { sender: 'bot', text: 'Sorry, something went wrong. Please try again.', isNew: true };
       setMessages((prev) => [...prev, errorMessage]);
       setLoading(false);
       toast({
@@ -181,7 +277,7 @@ const ChatBox = () => {
                   px={4}
                   py={2}
                 >
-                  {msg.sender === 'bot' ? (
+                  {msg.sender === 'bot' && msg.isNew ? (
                     <ReactTypingEffect
                       text={[msg.text]}
                       typingDelay={0}
@@ -202,6 +298,24 @@ const ChatBox = () => {
             <div ref={messagesEndRef} />
           </VStack>
           <Flex p={4} borderTop="1px" borderColor="pink.200">
+            <IconButton
+              icon={<RepeatIcon />}
+              onClick={handleClickSpin}
+              isRound
+              aria-label="Reset chat"
+              variant="outline"
+              colorScheme="pink"
+              mr={2}
+              size="md"
+              _hover={{ bg: 'pink.100' }}
+              className={isAnimating ? 'spin-animation' : ''}
+              css={{
+                '&.spin-animation': {
+                  animation: 'spin 1s linear infinite',
+                },
+                transition: 'all 0.2s',
+              }}
+            />
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
