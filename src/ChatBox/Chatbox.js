@@ -14,7 +14,6 @@ import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import { FaPaperPlane } from 'react-icons/fa';
 import ReactTypingEffect from 'react-typing-effect';
 import { supabase } from '../supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
 
 const theme = extendTheme({
   styles: {
