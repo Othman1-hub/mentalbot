@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import theme from './theme';
 import AuthForm from './Auth/auth';
 import Fcom from './Fcom';
-import NavBar from './NavBar';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

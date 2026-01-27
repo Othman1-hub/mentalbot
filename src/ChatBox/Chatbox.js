@@ -42,7 +42,6 @@ const ChatBox = () => {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId] = useState(uuidv4());
   const messagesEndRef = useRef(null);
   const toast = useToast();
 

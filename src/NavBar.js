@@ -11,16 +11,6 @@ const gradientAnimation = keyframes`
 const NavBar = ({ onlogOut }) => {
   console.log("NavBar rendered. onLogout type:", typeof onlogOut);
 
-  const handleLogoutClick = () => {
-    console.log("Logout button clicked");
-    if (typeof onLogout === 'function') {
-      console.log("Calling onLogout function");
-      onlogOut();
-    } else {
-      console.error("onLogout is not a function", onlogOut);
-    }
-  };
-
   return (
     <Box
       as="nav"
