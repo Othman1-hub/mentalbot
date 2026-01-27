@@ -15,7 +15,6 @@ import { FaPaperPlane } from 'react-icons/fa';
 import ReactTypingEffect from 'react-typing-effect';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
-import OpenAI from 'openai';
 
 const theme = extendTheme({
   styles: {
@@ -46,12 +45,6 @@ const ChatBox = () => {
   const [sessionId] = useState(uuidv4());
   const messagesEndRef = useRef(null);
   const toast = useToast();
-
-  const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-  const openai = new OpenAI({
-    apiKey: apiKey,
-    dangerouslyAllowBrowser: true
-  });
 
   const modelConfig = {
     model: "gpt-4o-mini",
@@ -118,15 +111,25 @@ const ChatBox = () => {
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const response = await openai.chat.completions.create({
-        ...modelConfig,
-        messages: [
-          ...modelConfig.messages,
-          { role: "user", content: input }
-        ]
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            ...modelConfig.messages,
+            { role: "user", content: input }
+          ]
+        }),
       });
 
-      const botMessageText = response.choices[0]?.message?.content || 'I am here to help you!';
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const data = await response.json();
+      const botMessageText = data.choices[0]?.message?.content || 'I am here to help you!';
       const botMessage = { sender: 'bot', text: botMessageText };
 
       await saveMessageToSupabase(userMessage.text, botMessage.text);
