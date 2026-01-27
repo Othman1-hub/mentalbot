@@ -15,6 +15,14 @@ export default async function handler(req, res) {
   try {
     const { messages } = req.body;
 
+    // Check if API key exists
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not set');
+      return res.status(500).json({ error: 'API key not configured' });
+    }
+
+    console.log('Making request to OpenAI...');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -32,12 +40,14 @@ export default async function handler(req, res) {
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('OpenAI API error:', data);
       throw new Error(data.error?.message || 'OpenAI API request failed');
     }
 
+    console.log('OpenAI request successful');
     res.status(200).json(data);
   } catch (error) {
-    console.error('OpenAI API Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('API Error:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
